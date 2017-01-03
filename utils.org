@@ -74,6 +74,43 @@ so,
       return (installed, automatic, upgradeable, insvers)
 
   # run
+  # apt-cache dumpavail
+  try:
+      ac = subprocess.Popen("apt-cache dumpavail", shell=True, stdout=subprocess.PIPE)
+  except OSError:
+      sys.stderr.write("unable to exec apt-cache(8).  is it installed?\n")
+      sys.exit(1)
+  package = None
+  desc = None
+  descriptions = dict()
+  for line in ac.stdout:
+      # sys.stderr.write("ac: {}\n".format(line))
+      if line == "\n":            # read in one complete
+          if package != None or desc != None:
+              if package == None:
+                  pass            # XXX
+              elif desc == None:
+                  pass            # XXX
+              descriptions[package] = desc
+              package = None
+              desc = None
+          continue
+      spl = line.split()
+      verb = spl.pop(0)
+      if verb == "Package:":
+          package = spl.pop(0)
+      elif verb == "Description:":
+          desc = " ".join(spl)
+  if package != None or desc != None:
+      if package == None:
+          pass            # XXX
+      elif desc == None:
+          pass            # XXX
+      descriptions[package] = desc
+      package = None
+      desc = None
+
+  # run
   # apt list 2>&1 | sed 'sX/[^ ]*XXg'
   try:
       al = subprocess.Popen("apt list", shell=True, stdout=subprocess.PIPE)
@@ -91,6 +128,7 @@ so,
   dbase = dict()
   # update the database with 1) install status ('[' exists in $4); 2)
   # upgradeable ($2 here doesn't match $2 in dpkg-query)
+  # processing line by line: http://stackoverflow.com/a/8010133/1527747
   for line in se.stdout:
       if line == "Listing...\n":
           continue
@@ -110,41 +148,14 @@ so,
           insauto = False
           insupgrade = False
           insvers = availvers
+      if not package in descriptions:
+          sys.stderr.write("don't have description (from apt-cache(8)) for package {}\n",
+                           package)
+          sys.exit(4)
       dbase[package] = {'instatus':instatus, 'insvers':insvers,
-                        'availvers':availvers, 'desc':False,
+                        'availvers':availvers, 'desc':descriptions[package],
                         'insauto':insauto, 'insupgrade':insupgrade}
       sys.stderr.write("{} {}\n".format(package, dbase[package]))
-
-  # run
-  # dpkg-query -W --showformat='${Package} ${Version} ${Description}\n' | grep -v '^ '
-  try:
-      dq = subprocess.Popen("dpkg-query -W --showformat='${Package} ${Version} ${Description}\n'",
-                            shell=True, stdout=subprocess.PIPE)
-  except OSError:
-      sys.stderr.write("unable to exec dpkg-query(1).  is it installed?\n")
-      sys.exit(1)
-  try:
-      gr = subprocess.Popen("grep -v '^ '", shell=True,
-                            stdin=dq.stdout, stdout=subprocess.PIPE)
-  except OSError:
-      sys.stderr.write("unable to exec grep(1).  is it installed?\n")
-      sys.exit(1)
-
-  # processing line by line: http://stackoverflow.com/a/8010133/1527747
-  for line in gr.stdout:
-      # sys.stderr.write(line); sys.stderr.write("\n")
-      spl = line.split()
-      package = spl.pop(0)
-      version = spl.pop(0)
-      desc = " ".join(spl)
-      if not package in dbase:
-          sys.stderr.write("expected to find package {} in dbase\n".format(package))
-          sys.exit(2)
-      if dbase[package]['insvers'] != version:
-          sys.stderr.write("unexpected version {} from dpkg-query for package {}; expected {}\n".format(
-              version, package, dbase[package]['insvers']))
-          sys.exit(2)
-      dbase[package]['desc'] = desc
 
   for (package, entry) in dbase.iteritems():
       if entry['insupgrade']:
@@ -153,5 +164,6 @@ so,
           prefix = "i       "
       else:
           prefix = "        "
-      print("{}{}-{}: {}".format(prefix, package, entry['insvers'], entry['desc']))
+      print("{}{}-{}:\t{}".format(prefix, package, entry['insvers'], entry['desc']))
 #+END_SRC
+
