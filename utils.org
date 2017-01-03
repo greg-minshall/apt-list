@@ -60,13 +60,15 @@ so,
       sys.stderr.write("python error: unable to import required module \"re\"\n")
       sys.exit(1)
 
-  def crack_instatus(status):
-      installed = re.search("^.installed", status) != None
-      automatic = re.search("^.[a-z]*,automatic", status) != None
-      upgradeable = re.search("^.upgrade*able", status) != None
+  def crack_instatus(slist):
+      sys.stderr.write("crack_instatus({})\n".format(slist))
+      status = slist.pop(0)
+      installed = re.search("^installed", status) != None
+      automatic = re.search("^[a-z]*,automatic", status) != None
+      upgradeable = re.search("^upgrade*able", status) != None
       if upgradeable:
-          sre = re.search("^.upgrade*able from: ", status)
-          insvers = sre.re.sub("", status).replace("]", "")
+          slist.pop(0)                # "from:"
+          insvers = slist.pop(0)
       else:
           insvers = None
       return (installed, automatic, upgradeable, insvers)
@@ -90,28 +92,28 @@ so,
   # update the database with 1) install status ('[' exists in $4); 2)
   # upgradeable ($2 here doesn't match $2 in dpkg-query)
   for line in se.stdout:
+      if line == "Listing...\n":
+          continue
       sys.stderr.write(line); sys.stderr.write("\n")
-      try:
-          (package, availvers, processor, instatus) = line.split()
-          (instatus, insauto, insupgrade, insvers) = crack_instatus(instatus)
+      spl = re.split('[][ ]+', line)
+      package = spl.pop(0)
+      availvers = spl.pop(0)
+      processor = spl.pop(0)
+      if len(spl) > 0:
+          sys.stderr.write("{}\n".format(spl))
+          spl.pop()          # get rid of trailing newline
+          (instatus, insauto, insupgrade, insvers) = crack_instatus(spl)
           if insvers == None:
               insvers = availvers
-          sys.stderr.write("installed {}\n".format((package, availvers, processor, instatus)))
-      except ValueError:
-          try:
-              (package, availvers, processor) = line.split()
-              instatus = False
-              insauto = False
-              insupgrade = False
-              insvers = availvers
-              sys.stderr.write("not installed {}\n".format((package, availvers, processor, instatus)))
-          except ValueError:
-              sys.stderr.write("continuing...\n")
-              continue            # XXX presumably "Listing..."
+      else:
+          instatus = False
+          insauto = False
+          insupgrade = False
+          insvers = availvers
       dbase[package] = {'instatus':instatus, 'insvers':insvers,
                         'availvers':availvers, 'desc':False,
                         'insauto':insauto, 'insupgrade':insupgrade}
-      # sys.stderr.write("{} {}\n".format(package, dbase[package]))
+      sys.stderr.write("{} {}\n".format(package, dbase[package]))
 
   # run
   # dpkg-query -W --showformat='${Package} ${Version} ${Description}\n' | grep -v '^ '
@@ -148,6 +150,4 @@ so,
       print(package, entry)
 
 #+END_SRC
-
-#+RESULTS:
 
