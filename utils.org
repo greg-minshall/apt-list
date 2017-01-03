@@ -90,9 +90,12 @@ so,
   # update the database with 1) install status ('[' exists in $4); 2)
   # upgradeable ($2 here doesn't match $2 in dpkg-query)
   for line in se.stdout:
+      sys.stderr.write(line); sys.stderr.write("\n")
       try:
           (package, availvers, processor, instatus) = line.split()
           (instatus, insauto, insupgrade, insvers) = crack_instatus(instatus)
+          if insvers == None:
+              insvers = availvers
       except ValueError:
           try:
               (package, availvers, processor) = line.split()
@@ -109,7 +112,7 @@ so,
   # run
   # dpkg-query -W --showformat='${Package} ${Version} ${Description}\n' | grep -v '^ '
   try:
-      dq = subprocess.Popen("dpkg-query -W --showformat='${Package} ${Version} ${Description}\n'".split(),
+      dq = subprocess.Popen(["dpkg-query", "-W", "--showformat=${Package} ${Version} ${Description}\n"],
                             stdout=subprocess.PIPE)
   except OSError:
       sys.stderr.write("unable to exec dpkg-query(1).  is it installed?\n")
@@ -123,9 +126,22 @@ so,
 
   # processing line by line: http://stackoverflow.com/a/8010133/1527747
   for line in gr.stdout:
-      (package, version, description) = line.split()
-      dbase[package] = [True, version, version, description]
+      # sys.stderr.write(line); sys.stderr.write("\n")
+      spl = line.split()
+      package = spl.pop(0)
+      version = spl.pop(0)
+      desc = " ".join(spl)
+      if not package in dbase:
+          sys.stderr.write("expected to find package {} in dbase\n".format(package))
+          sys.exit(2)
+      if dbase[package]['insvers'] != version:
+          sys.stderr.write("unexpected version {} from dpkg-query for package {}; expected {}\n".format(
+              version, package, dbase[package]['insvers']))
+          sys.exit(2)
+      dbase[package]['desc'] = desc
 
+  for (package, entry) in dbase.iteritems():
+      print(package, entry)
 
 #+END_SRC
 
