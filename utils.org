@@ -96,6 +96,7 @@ so,
           (instatus, insauto, insupgrade, insvers) = crack_instatus(instatus)
           if insvers == None:
               insvers = availvers
+          sys.stderr.write("installed {}\n".format((package, availvers, processor, instatus)))
       except ValueError:
           try:
               (package, availvers, processor) = line.split()
@@ -103,12 +104,14 @@ so,
               insauto = False
               insupgrade = False
               insvers = availvers
+              sys.stderr.write("not installed {}\n".format((package, availvers, processor, instatus)))
           except ValueError:
+              sys.stderr.write("continuing...\n")
               continue            # XXX presumably "Listing..."
       dbase[package] = {'instatus':instatus, 'insvers':insvers,
                         'availvers':availvers, 'desc':False,
                         'insauto':insauto, 'insupgrade':insupgrade}
-      # print(package, dbase[package]) >> sys.stderr
+      # sys.stderr.write("{} {}\n".format(package, dbase[package]))
 
   # run
   # dpkg-query -W --showformat='${Package} ${Version} ${Description}\n' | grep -v '^ '
