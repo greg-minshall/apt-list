@@ -1,5 +1,5 @@
 * various utilities i would like to have
-** list packages with install *and* upgrade status
+** TODO list packages with install *and* upgrade status
 
 i had this in fink.
 
@@ -42,7 +42,7 @@ gives all installed packages (upgradable or not)
 gives all uninstalled packages
 
 so,
-#+BEGIN_SRC python :results output
+#+BEGIN_SRC python :results output :tangle apt-list :shebang "#!/usr/bin/env python"
   # module subprocess: http://stackoverflow.com/a/89243/1527747
   try:    
       import sys
@@ -61,7 +61,7 @@ so,
       sys.exit(1)
 
   def crack_instatus(slist):
-      sys.stderr.write("crack_instatus({})\n".format(slist))
+      # sys.stderr.write("crack_instatus({})\n".format(slist))
       status = slist.pop(0)
       installed = re.search("^installed", status) != None
       automatic = re.search("^[a-z]*,automatic", status) != None
@@ -132,13 +132,13 @@ so,
   for line in se.stdout:
       if line == "Listing...\n":
           continue
-      sys.stderr.write(line); sys.stderr.write("\n")
+      # sys.stderr.write(line); sys.stderr.write("\n")
       spl = re.split('[][ ]+', line)
       package = spl.pop(0)
       availvers = spl.pop(0)
       processor = spl.pop(0)
       if len(spl) > 0:
-          sys.stderr.write("{}\n".format(spl))
+          # sys.stderr.write("{}\n".format(spl))
           spl.pop()          # get rid of trailing newline
           (instatus, insauto, insupgrade, insvers) = crack_instatus(spl)
           if insvers == None:
@@ -149,21 +149,23 @@ so,
           insupgrade = False
           insvers = availvers
       if not package in descriptions:
-          sys.stderr.write("don't have description (from apt-cache(8)) for package {}\n",
-                           package)
+          # sys.stderr.write("don't have description (from apt-cache(8)) for package {}\n", package)
           sys.exit(4)
       dbase[package] = {'instatus':instatus, 'insvers':insvers,
                         'availvers':availvers, 'desc':descriptions[package],
                         'insauto':insauto, 'insupgrade':insupgrade}
-      sys.stderr.write("{} {}\n".format(package, dbase[package]))
+      # sys.stderr.write("{} {}\n".format(package, dbase[package]))
 
   for (package, entry) in dbase.iteritems():
       if entry['insupgrade']:
           prefix = "I       "
+          upgrade = " ({})".format(entry['availvers'])
       elif entry['instatus']:
           prefix = "i       "
+          upgrade = ""
       else:
           prefix = "        "
-      print("{}{}-{}:\t{}".format(prefix, package, entry['insvers'], entry['desc']))
+          upgrade = ""
+      print("{}{} {}{}:\t{}".format(prefix, package, entry['insvers'], upgrade, entry['desc']))
 #+END_SRC
 
