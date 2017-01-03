@@ -156,7 +156,10 @@ so,
                         'insauto':insauto, 'insupgrade':insupgrade}
       # sys.stderr.write("{} {}\n".format(package, dbase[package]))
 
-  for (package, entry) in dbase.iteritems():
+  packages = dbase.keys()
+  packages.sort()
+  for package in packages:
+      entry = dbase[package]
       if entry['insupgrade']:
           prefix = "I       "
           upgrade = " ({})".format(entry['availvers'])
