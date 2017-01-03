@@ -43,22 +43,24 @@ gives all uninstalled packages
 
 so,
 #+BEGIN_SRC python :results output :tangle apt-list :shebang "#!/usr/bin/env python"
-  # module subprocess: http://stackoverflow.com/a/89243/1527747
+  def mport(modstring):
+      """try to import a module named MODSTRING, printing an error message and aborting on failure.  (note that module sys must already be imported.)"""
+      try:
+          eval(compile("import {}".format(modstring), "foo.c", "single"), globals())
+      except ImportError:
+          sys.stderr.write("python error: unable to import required module \"{}\"\n".format(modstring))
+          sys.exit(1)
+        
   try:    
       import sys
   except ImportError:
       print("python error: unable to import \"sys\"")
       raise
-  try:
-      import subprocess
-  except ImportError:
-      sys.stderr.write("python error: unable to import required module \"subprocess\"\n")
-      sys.exit(1)
-  try:
-      import re
-  except ImportError:
-      sys.stderr.write("python error: unable to import required module \"re\"\n")
-      sys.exit(1)
+
+  # module subprocess: http://stackoverflow.com/a/89243/1527747
+  mport("subprocess")
+  mport("re")
+  mport("argparse")
 
   def crack_instatus(slist):
       # sys.stderr.write("crack_instatus({})\n".format(slist))
@@ -171,4 +173,6 @@ so,
           upgrade = ""
       print("{}{} {}{}:\t{}".format(prefix, package, entry['insvers'], upgrade, entry['desc']))
 #+END_SRC
+
+#+RESULTS:
 
