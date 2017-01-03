@@ -147,7 +147,11 @@ so,
       dbase[package]['desc'] = desc
 
   for (package, entry) in dbase.iteritems():
-      print(package, entry)
-
+      if entry['insupgrade']:
+          prefix = "I       "
+      elif entry['instatus']:
+          prefix = "i       "
+      else:
+          prefix = "        "
+      print("{}{}-{}: {}".format(prefix, package, entry['insvers'], entry['desc']))
 #+END_SRC
-
