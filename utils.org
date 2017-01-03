@@ -108,6 +108,7 @@ so,
       dbase[package] = {'instatus':instatus, 'insvers':insvers,
                         'availvers':availvers, 'desc':False,
                         'insauto':insauto, 'insupgrade':insupgrade}
+      print(package, dbase[package]) >> sys.stderr
 
   # run
   # dpkg-query -W --showformat='${Package} ${Version} ${Description}\n' | grep -v '^ '
