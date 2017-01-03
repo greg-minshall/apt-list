@@ -54,39 +54,30 @@ so,
   except ImportError:
       sys.stderr.write("python error: unable to import required module \"subprocess\"\n")
       sys.exit(1)
-
-  # run
-  # dpkg-query -W --showformat='${Package} ${Version} ${Description}\n' | grep -v '^ '
-
   try:
-      dq = subprocess.Popen("dpkg-query -W --showformat='${Package} ${Version} ${Description}\n'".split(),
-                            stdout=subprocess.PIPE)
-  except OSError:
-      sys.stderr.write("unable to exec dpkg-query(1).  is it installed?\n")
+      import re
+  except ImportError:
+      sys.stderr.write("python error: unable to import required module \"re\"\n")
       sys.exit(1)
 
-  try:
-      gr = subprocess.Popen(["grep", "-v", "^ "],
-                            stdin=dq.stdout, stdout=subprocess.PIPE)
-  except OSError:
-      sys.stderr.write("unable to exec grep(1).  is it installed?\n")
-      sys.exit(1)
-
-  # build a database of the output
-
-  # processing line by line: http://stackoverflow.com/a/8010133/1527747
-  for line in gr.stdout:
-      sys.stdout.write(line)
+  def crack_instatus(status):
+      installed = re.search("^.installed", status) != None
+      automatic = re.search("^.[a-z]*,automatic", status) != None
+      upgradeable = re.search("^.upgrade*able", status) != None
+      if upgradeable:
+          sre = re.search("^.upgrade*able from: ", status)
+          insvers = sre.re.sub("", status).replace("]", "")
+      else:
+          insvers = None
+      return (installed, automatic, upgradeable, insvers)
 
   # run
   # apt list 2>&1 | sed 'sX/[^ ]*XXg'
-
   try:
       al = subprocess.Popen("apt list".split(), stdout=subprocess.PIPE)
   except OSError:
       sys.stderr.write("unable to exec apt(8).  is it installed?\n")
       sys.exit(1)
-
   try:
       se = subprocess.Popen(["sed", "sX/[^ ]*XXg"],
                             stdin=al.stdout, stdout=subprocess.PIPE)
@@ -94,12 +85,49 @@ so,
       sys.stderr.write("unable to exec sed(8).  is it installed?\n")
       sys.exit(1)
 
-
-
+  # build a database of the output
+  dbase = dict()
   # update the database with 1) install status ('[' exists in $4); 2)
   # upgradeable ($2 here doesn't match $2 in dpkg-query)
-
   for line in se.stdout:
-      sys.stdout.write(line)
+      try:
+          (package, availvers, processor, instatus) = line.split()
+          (instatus, insauto, insupgrade, insvers) = crack_instatus(instatus)
+      except ValueError:
+          try:
+              (package, availvers, processor) = line.split()
+              instatus = False
+              insauto = False
+              insupgrade = False
+              insvers = availvers
+          except ValueError:
+              continue            # XXX presumably "Listing..."
+      dbase[package] = {'instatus':instatus, 'insvers':insvers,
+                        'availvers':availvers, 'desc':False,
+                        'insauto':insauto, 'insupgrade':insupgrade}
+
+  # run
+  # dpkg-query -W --showformat='${Package} ${Version} ${Description}\n' | grep -v '^ '
+  try:
+      dq = subprocess.Popen("dpkg-query -W --showformat='${Package} ${Version} ${Description}\n'".split(),
+                            stdout=subprocess.PIPE)
+  except OSError:
+      sys.stderr.write("unable to exec dpkg-query(1).  is it installed?\n")
+      sys.exit(1)
+  try:
+      gr = subprocess.Popen(["grep", "-v", "^ "],
+                            stdin=dq.stdout, stdout=subprocess.PIPE)
+  except OSError:
+      sys.stderr.write("unable to exec grep(1).  is it installed?\n")
+      sys.exit(1)
+
+  # processing line by line: http://stackoverflow.com/a/8010133/1527747
+  for line in gr.stdout:
+      (package, version, description) = line.split()
+      dbase[package] = [True, version, version, description]
+
 
 #+END_SRC
+
+#+RESULTS:
+
