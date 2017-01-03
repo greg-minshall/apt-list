@@ -44,14 +44,33 @@ gives all uninstalled packages
 so,
 #+BEGIN_SRC python :results output
   # module subprocess: http://stackoverflow.com/a/89243/1527747
-  import subprocess
-  import sys
+  try:    
+      import sys
+  except ImportError:
+      print("python error: unable to import \"sys\"")
+      raise
+  try:
+      import subprocess
+  except ImportError:
+      sys.stderr.write("python error: unable to import required module \"subprocess\"\n")
+      sys.exit(1)
 
   # run
   # dpkg-query -W --showformat='${Package} ${Version} ${Description}\n' | grep -v '^ '
 
-  dq = subprocess.Popen(["dpkg-query", "-W", "--showformat='${Package} ${Version} ${Description}\n'"], stdout=subprocess.PIPE)
-  gr = subprocess.Popen(["grep", "-v", "^ "], stdin=dq.stdout, stdout=subprocess.PIPE)
+  try:
+      dq = subprocess.Popen("dpkg-query -W --showformat='${Package} ${Version} ${Description}\n'".split(),
+                            stdout=subprocess.PIPE)
+  except OSError:
+      sys.stderr.write("unable to exec dpkg-query(1).  is it installed?\n")
+      sys.exit(1)
+
+  try:
+      gr = subprocess.Popen(["grep", "-v", "^ "],
+                            stdin=dq.stdout, stdout=subprocess.PIPE)
+  except OSError:
+      sys.stderr.write("unable to exec grep(1).  is it installed?\n")
+      sys.exit(1)
 
   # build a database of the output
 
@@ -62,9 +81,20 @@ so,
   # run
   # apt list 2>&1 | sed 'sX/[^ ]*XXg'
 
-  al = subprocess.Popen(["apt", "list"], stdout=subprocess.PIPE)
-  se = subprocess.Popen(["sed", "sX/[^ ]*XXg"],
-                        stdin=al.stdout, stdout=subprocess.PIPE)
+  try:
+      al = subprocess.Popen("apt list".split(), stdout=subprocess.PIPE)
+  except OSError:
+      sys.stderr.write("unable to exec apt(8).  is it installed?\n")
+      sys.exit(1)
+
+  try:
+      se = subprocess.Popen(["sed", "sX/[^ ]*XXg"],
+                            stdin=al.stdout, stdout=subprocess.PIPE)
+  except OSError:
+      sys.stderr.write("unable to exec sed(8).  is it installed?\n")
+      sys.exit(1)
+
+
 
   # update the database with 1) install status ('[' exists in $4); 2)
   # upgradeable ($2 here doesn't match $2 in dpkg-query)
