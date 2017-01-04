@@ -51,28 +51,22 @@ so,
           sys.stderr.write("python error: unable to import required module \"{}\"\n".format(modstring))
           sys.exit(1)
 
-  def popen(cmd, shell=True, stdin=None, stdout=None, stderr=None):
-      mport("subprocess")
-      print(cmd)
+  def popen(cmd, stdin=None, stdout=None, stderr=None):
+      """open a pipe, complaining in the event of a failure"""
+      # PATTERN to ignore spaces inside quotes:
+      # http://stackoverflow.com/q/2785755/1527747
+      PATTERN = re.compile(r'''((?:[^ "']|"[^"]*"|'[^']*')+)''')
+      # now, get rid of any stray quotes.  faster way?
+      list = PATTERN.split(cmd)[1::2]
+      dmc = []
+      for i in list:
+          dmc.append(re.sub('[\'"]', '', i))
       try:
-          po = subprocess.Popen(cmd, shell=shell,
-                                stdin=stdin, stdout=stdout, stderr=stderr)
-          print("done")
-          print(po)
+          po = subprocess.Popen(dmc, stdin=stdin, stdout=stdout, stderr=stderr)
       except OSError:
           sys.stderr.write("unable to exec {}.  is it installed?\n".format(cmd.split()[0]))
           sys.exit(1)
-
-  #
-  try:    
-      import sys
-  except ImportError:
-      print("python error: unable to import \"sys\"")
-      raise
-
-  # module subprocess: http://stackoverflow.com/a/89243/1527747
-  mport("subprocess")
-  mport("re")
+      return po
 
   def crack_instatus(slist):
       # sys.stderr.write("crack_instatus({})\n".format(slist))
@@ -87,13 +81,20 @@ so,
           insvers = None
       return (installed, automatic, upgradeable, insvers)
 
+  #
+  try:    
+      import sys
+  except ImportError:
+      print("python error: unable to import \"sys\"")
+      raise
+
+  # module subprocess: http://stackoverflow.com/a/89243/1527747
+  mport("subprocess")
+  mport("re")
+
   # run
   # apt-cache dumpavail
-  try:
-      ac = subprocess.Popen("apt-cache dumpavail", shell=True, stdout=subprocess.PIPE)
-  except OSError:
-      sys.stderr.write("unable to exec apt-cache(8).  is it installed?\n")
-      sys.exit(1)
+  ac = popen("apt-cache dumpavail", stdout=subprocess.PIPE)
   package = None
   desc = None
   descriptions = dict()
@@ -126,17 +127,8 @@ so,
 
   # run
   # apt list 2>&1 | sed 'sX/[^ ]*XXg'
-  try:
-      al = subprocess.Popen("apt list", shell=True, stdout=subprocess.PIPE)
-  except OSError:
-      sys.stderr.write("unable to exec apt(8).  is it installed?\n")
-      sys.exit(1)
-  try:
-      se = subprocess.Popen("sed 'sX/[^ ]*XXg'", shell=True,
-                            stdin=al.stdout, stdout=subprocess.PIPE)
-  except OSError:
-      sys.stderr.write("unable to exec sed(8).  is it installed?\n")
-      sys.exit(1)
+  al = popen("apt list", stdout=subprocess.PIPE)
+  se = popen("sed 'sX/[^ ]*XXg'", stdin=al.stdout, stdout=subprocess.PIPE)
 
   # build a database of the output
   dbase = dict()
