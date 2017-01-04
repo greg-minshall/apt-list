@@ -6,6 +6,9 @@ me when i ran [[http://finkproject.org/][fink]] on macosx, i.e., a summary listi
 package, as well as an indication of installed files ('i' if
 up-to-date; 'I' if there is an upgrade available -- both in column 1).
 
+this requires both apt-cache(8) and apt(8).  (my sense is that the
+latter is newer.)
+
 as this is in an emacs [[http://orgmode.org/][org]] file, you'll either need to run
 `org-babel-tangle' ('C-c C-v t' from an emacs orgmode buffer), or just
 manually select the right bits, and copy them to a file named
