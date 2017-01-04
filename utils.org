@@ -50,7 +50,20 @@ so,
       except ImportError:
           sys.stderr.write("python error: unable to import required module \"{}\"\n".format(modstring))
           sys.exit(1)
-        
+
+  def popen(cmd, shell=True, stdin=None, stdout=None, stderr=None):
+      mport("subprocess")
+      print(cmd)
+      try:
+          po = subprocess.Popen(cmd, shell=shell,
+                                stdin=stdin, stdout=stdout, stderr=stderr)
+          print("done")
+          print(po)
+      except OSError:
+          sys.stderr.write("unable to exec {}.  is it installed?\n".format(cmd.split()[0]))
+          sys.exit(1)
+
+  #
   try:    
       import sys
   except ImportError:
@@ -60,7 +73,6 @@ so,
   # module subprocess: http://stackoverflow.com/a/89243/1527747
   mport("subprocess")
   mport("re")
-  mport("argparse")
 
   def crack_instatus(slist):
       # sys.stderr.write("crack_instatus({})\n".format(slist))
@@ -171,8 +183,11 @@ so,
       else:
           prefix = "        "
           upgrade = ""
-      print("{}{} {}{}:\t{}".format(prefix, package, entry['insvers'], upgrade, entry['desc']))
+      try:
+          print("{}{} {}{}:\t{}".format(prefix, package, entry['insvers'],
+                                        upgrade, entry['desc']))
+      except IOError:
+          sys.exit(0)         # pipeline shutdown
 #+END_SRC
 
 #+RESULTS:
-
