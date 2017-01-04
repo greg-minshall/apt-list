@@ -1,0 +1,27 @@
+* apt-list
+
+this is a small utility that gives me something like "fink list" gave
+me when i ran [[http://finkproject.org/][fink]] on macosx, i.e., a summary listing of available
+(via apt-get(8)) packages, with the one line description of each
+package, as well as an indication of installed files ('i' if
+up-to-date; 'I' if there is an upgrade available -- both in column 1).
+
+as this is in an emacs [[http://orgmode.org/][org]] file, you'll either need to run
+`org-babel-tangle' ('C-c C-v t' from an emacs orgmode buffer), or just
+manually select the right bits, and copy them to a file named
+apt-list.
+
+someday there should be some argument parsing, probably to restrict
+the output to show only installed and/or installed, need upgrading,
+files, plus maybe a search term (though, for both of those, grep(1) is
+fine).
+
+enjoy.
+
+caveats:
+
+- there are various "half-installed" states i've never seen, and
+  so i don't know how this will work for that.
+- as you'll see in your output, apt(8) isn't sure that its output
+  format is stable; if its output format changes, apt-list will likely
+  break.
