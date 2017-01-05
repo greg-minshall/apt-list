@@ -1,6 +1,9 @@
 #!/usr/bin/env python
+
 def mport(modstring):
-    """try to import a module named MODSTRING, printing an error message and aborting on failure.  (note that module sys must already be imported.)"""
+    """try to import a module named MODSTRING, printing an error
+    message and aborting on failure.  (note that module sys must
+    already be imported.)"""
     try:
         eval(compile("import {}".format(modstring), "foo.c", "single"), globals())
     except ImportError:
@@ -37,102 +40,114 @@ def crack_instatus(slist):
         insvers = None
     return (installed, automatic, upgradeable, insvers)
 
-#
-try:    
-    import sys
-except ImportError:
-    print("python error: unable to import \"sys\"")
-    raise
+def doimports():
+    try:    
+        import sys
+    except ImportError:
+        print("python error: unable to import \"sys\"")
+        raise
 
-# module subprocess: http://stackoverflow.com/a/89243/1527747
-mport("subprocess")
-mport("re")
+    # module subprocess: http://stackoverflow.com/a/89243/1527747
+    mport("subprocess")
+    mport("re")
 
-# run
-# apt-cache dumpavail
-ac = popen("apt-cache dumpavail", stdout=subprocess.PIPE)
-package = None
-desc = None
-descriptions = dict()
-for line in ac.stdout:
-    # sys.stderr.write("ac: {}\n".format(line))
-    if line == "\n":            # read in one complete
-        if package != None or desc != None:
-            if package == None:
-                pass            # XXX
-            elif desc == None:
-                pass            # XXX
-            descriptions[package] = desc
-            package = None
-            desc = None
-        continue
-    spl = line.split()
-    verb = spl.pop(0)
-    if verb == "Package:":
-        package = spl.pop(0)
-    elif verb == "Description:":
-        desc = " ".join(spl)
-if package != None or desc != None:
-    if package == None:
-        pass            # XXX
-    elif desc == None:
-        pass            # XXX
-    descriptions[package] = desc
+def getdescriptions():
+    # run
+    # apt-cache dumpavail
+    ac = popen("apt-cache dumpavail", stdout=subprocess.PIPE)
     package = None
     desc = None
+    descriptions = dict()
+    for line in ac.stdout:
+        # sys.stderr.write("ac: {}\n".format(line))
+        if line == "\n":            # read in one complete
+            if package != None or desc != None:
+                if package == None:
+                    pass            # XXX
+                elif desc == None:
+                    pass            # XXX
+                descriptions[package] = desc
+                package = None
+                desc = None
+            continue
+        spl = line.split()
+        verb = spl.pop(0)
+        if verb == "Package:":
+            package = spl.pop(0)
+        elif verb == "Description:":
+            desc = " ".join(spl)
+    if package != None or desc != None:
+        if package == None:
+            pass            # XXX
+        elif desc == None:
+            pass            # XXX
+        descriptions[package] = desc
+        package = None
+        desc = None
+    return descriptions
 
-# run
-# apt list 2>&1 | sed 'sX/[^ ]*XXg'
-al = popen("apt list", stdout=subprocess.PIPE)
-se = popen("sed 'sX/[^ ]*XXg'", stdin=al.stdout, stdout=subprocess.PIPE)
+def getdbase(descriptions):
+    # run
+    # apt list 2>&1 | sed 'sX/[^ ]*XXg'
+    al = popen("apt list", stdout=subprocess.PIPE)
+    se = popen("sed 'sX/[^ ]*XXg'", stdin=al.stdout, stdout=subprocess.PIPE)
 
-# build a database of the output
-dbase = dict()
-# update the database with 1) install status ('[' exists in $4); 2)
-# upgradeable ($2 here doesn't match $2 in dpkg-query)
-# processing line by line: http://stackoverflow.com/a/8010133/1527747
-for line in se.stdout:
-    if line == "Listing...\n":
-        continue
-    # sys.stderr.write(line); sys.stderr.write("\n")
-    spl = re.split('[][ ]+', line)
-    package = spl.pop(0)
-    availvers = spl.pop(0)
-    processor = spl.pop(0)
-    if len(spl) > 0:
-        # sys.stderr.write("{}\n".format(spl))
-        spl.pop()          # get rid of trailing newline
-        (instatus, insauto, insupgrade, insvers) = crack_instatus(spl)
-        if insvers == None:
+    # build a database of the output
+    dbase = dict()
+    # update the database with 1) install status ('[' exists in $4); 2)
+    # upgradeable ($2 here doesn't match $2 in dpkg-query)
+    # processing line by line: http://stackoverflow.com/a/8010133/1527747
+    for line in se.stdout:
+        if line == "Listing...\n":
+            continue
+        # sys.stderr.write(line); sys.stderr.write("\n")
+        spl = re.split('[][ ]+', line)
+        package = spl.pop(0)
+        availvers = spl.pop(0)
+        processor = spl.pop(0)
+        if len(spl) > 0:
+            # sys.stderr.write("{}\n".format(spl))
+            spl.pop()          # get rid of trailing newline
+            (instatus, insauto, insupgrade, insvers) = crack_instatus(spl)
+            if insvers == None:
+                insvers = availvers
+        else:
+            instatus = False
+            insauto = False
+            insupgrade = False
             insvers = availvers
-    else:
-        instatus = False
-        insauto = False
-        insupgrade = False
-        insvers = availvers
-    if not package in descriptions:
-        # sys.stderr.write("don't have description (from apt-cache(8)) for package {}\n", package)
-        sys.exit(4)
-    dbase[package] = {'instatus':instatus, 'insvers':insvers,
-                      'availvers':availvers, 'desc':descriptions[package],
-                      'insauto':insauto, 'insupgrade':insupgrade}
-    # sys.stderr.write("{} {}\n".format(package, dbase[package]))
+        if not package in descriptions:
+            # sys.stderr.write("don't have description (from apt-cache(8)) for package {}\n", package)
+            sys.exit(4)
+        dbase[package] = {'instatus':instatus, 'insvers':insvers,
+                          'availvers':availvers, 'desc':descriptions[package],
+                          'insauto':insauto, 'insupgrade':insupgrade}
+        # sys.stderr.write("{} {}\n".format(package, dbase[package]))
+    return dbase
 
-packages = dbase.keys()
-packages.sort()
-for package in packages:
-    entry = dbase[package]
-    if entry['insupgrade']:
-        prefix = "I       "
-        upgrade = " ({})".format(entry['availvers'])
-    elif entry['instatus']:
-        prefix = "i       "
-        upgrade = ""
-    else:
-        prefix = "        "
-        upgrade = ""
-    try:
-        print("{}{} {}{}:\t{}".format(prefix, package, entry['insvers'],
-                                      upgrade, entry['desc']))
-    except IOError:
-        sys.exit(0)         # pipeline shutdown
+def main(argv):
+    doimports()
+    descriptions = getdescriptions()
+    dbase = getdbase(descriptions)
+    packages = dbase.keys()
+    packages.sort()
+    for package in packages:
+        entry = dbase[package]
+        if entry['insupgrade']:
+            prefix = "I       "
+            upgrade = " ({})".format(entry['availvers'])
+        elif entry['instatus']:
+            prefix = "i       "
+            upgrade = ""
+        else:
+            prefix = "        "
+            upgrade = ""
+        try:
+            print("{}{} {}{}:\t{}".format(prefix, package, entry['insvers'],
+                                          upgrade, entry['desc']))
+        except IOError:
+            sys.exit(0)         # (presumably) pipeline shutdown
+
+if __name__ == "__main__":
+    import sys
+    main(sys.argv)
