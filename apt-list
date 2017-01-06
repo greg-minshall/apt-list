@@ -52,6 +52,7 @@ def doimports():
     mport("re")
 
 def getdescriptions():
+    doimports();                # make sure we have our imports
     # run
     # apt-cache dumpavail
     ac = popen("apt-cache dumpavail", stdout=subprocess.PIPE)
@@ -87,6 +88,7 @@ def getdescriptions():
     return descriptions
 
 def getdbase(descriptions):
+    doimports();                # make sure we have our imports
     # run
     # apt list 2>&1 | sed 'sX/[^ ]*XXg'
     al = popen("apt list", stdout=subprocess.PIPE)
@@ -126,7 +128,6 @@ def getdbase(descriptions):
     return dbase
 
 def main(argv):
-    doimports()
     descriptions = getdescriptions()
     dbase = getdbase(descriptions)
     packages = dbase.keys()
