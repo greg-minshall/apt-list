@@ -119,11 +119,11 @@ def getdbase(descriptions):
             insupgrade = False
             insvers = availvers
         if not package in descriptions:
-            # sys.stderr.write("don't have description (from apt-cache(8)) for package {}\n", package)
-            sys.exit(4)
-        dbase[package] = {'instatus':instatus, 'insvers':insvers,
-                          'availvers':availvers, 'desc':descriptions[package],
-                          'insauto':insauto, 'insupgrade':insupgrade}
+            sys.stderr.write("don't have description (from apt-cache(8)) for package {}\n".format(package))
+        else:
+            dbase[package] = {'instatus':instatus, 'insvers':insvers,
+                              'availvers':availvers, 'desc':descriptions[package],
+                              'insauto':insauto, 'insupgrade':insupgrade}
         # sys.stderr.write("{} {}\n".format(package, dbase[package]))
     return dbase
 
