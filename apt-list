@@ -54,37 +54,24 @@ def doimports():
 def getdescriptions():
     doimports();                # make sure we have our imports
     # run
-    # apt-cache dumpavail
-    ac = popen("apt-cache dumpavail", stdout=subprocess.PIPE)
+    # apt-cache search (before, used "dumpavail")
+    ac = popen("apt-cache search \"\"", stdout=subprocess.PIPE)
     package = None
     desc = None
     descriptions = dict()
     for line in ac.stdout:
-        # sys.stderr.write("ac: {}\n".format(line))
-        if line == "\n":            # read in one complete
-            if package != None or desc != None:
-                if package == None:
-                    pass            # XXX
-                elif desc == None:
-                    pass            # XXX
-                descriptions[package] = desc
-                package = None
-                desc = None
-            continue
         spl = line.split()
-        verb = spl.pop(0)
-        if verb == "Package:":
-            package = spl.pop(0)
-        elif verb == "Description:":
-            desc = " ".join(spl)
-    if package != None or desc != None:
-        if package == None:
-            pass            # XXX
-        elif desc == None:
-            pass            # XXX
-        descriptions[package] = desc
-        package = None
-        desc = None
+        package = spl.pop(0)
+        spl.pop(0)              # get rid of "--"
+        desc = " ".join(spl)
+        if package != None or desc != None:
+            if package == None:
+                pass            # XXX
+            elif desc == None:
+                pass            # XXX
+            descriptions[package] = desc
+            package = None
+            desc = None
     return descriptions
 
 def getdbase(descriptions):
